@@ -6,6 +6,7 @@
   "description": "Nagram — a meditative anagram-making web app with original sacred-geometry sigil art.",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/generate-icons.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.mjs"
