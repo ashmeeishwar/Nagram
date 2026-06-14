@@ -4,7 +4,7 @@ import WatermarkSigil from './components/WatermarkSigil'
 import LetterGame from './components/LetterGame'
 
 const MIN_LEN = 3
-const MAX_LEN = 100
+const MAX_LEN = 300
 
 export default function App() {
   const [name, setName] = useState('')
@@ -29,6 +29,18 @@ export default function App() {
     setName('')
     setInput('')
     setError('')
+  }
+
+  function onChange(e) {
+    const value = e.target.value
+    // Clamp to MAX_LEN at type/paste time and warn when input is truncated.
+    if (Array.from(value).length > MAX_LEN) {
+      setInput(Array.from(value).slice(0, MAX_LEN).join(''))
+      setError(`Maximum name length is ${MAX_LEN} characters.`)
+    } else {
+      setInput(value)
+      setError('')
+    }
   }
 
   function onSubmit(e) {
@@ -61,10 +73,9 @@ export default function App() {
               inputMode="text"
               autoComplete="off"
               autoFocus
-              maxLength={MAX_LEN}
               placeholder="e.g. Ada Lovelace"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={onChange}
             />
             {error && <p className="status status--err">{error}</p>}
             <button type="submit" className="btn btn--primary">

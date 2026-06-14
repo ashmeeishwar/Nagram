@@ -325,6 +325,11 @@ body {
   color: #e06a5a;
 }
 
+.status--warn {
+  color: var(--gold);
+  font-size: 0.85rem;
+}
+
 .status--note {
   color: var(--ink-dim);
   font-size: 0.8rem;

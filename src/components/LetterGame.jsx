@@ -3,9 +3,20 @@ import { saveAnagram, isSupabaseConfigured } from '../supabaseClient'
 
 const SPACE = '␣'
 
+// Collapse any run of consecutive spaces down to a single space, so removing a
+// letter that sat between two spaces can never leave a double space behind.
+function collapseSpaces(tokens) {
+  const out = []
+  for (const t of tokens) {
+    if (t.kind === 'space' && out.length && out[out.length - 1].kind === 'space') continue
+    out.push(t)
+  }
+  return out
+}
+
 export default function LetterGame({ name, onReset }) {
-  // One fixed slot per *letter* (spaces are handled by the dedicated space
-  // button, not by per-character slots). Positions never reorder.
+  // One fixed slot per *letter* (spaces are handled by the single dedicated
+  // space button, not by per-character slots). Positions never reorder.
   const slots = useMemo(
     () =>
       Array.from(name)
@@ -19,7 +30,9 @@ export default function LetterGame({ name, onReset }) {
   const [booked, setBooked] = useState([])
   const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
   const [errorMsg, setErrorMsg] = useState('')
+  const [notice, setNotice] = useState('')
   const spaceUid = useRef(0)
+  const noticeTimer = useRef(null)
 
   const locked = saveState === 'saving' || saveState === 'saved'
 
@@ -34,19 +47,37 @@ export default function LetterGame({ name, onReset }) {
   // Save depends only on the letters — leftover/unused spaces never block it.
   const allLettersBooked = slots.length > 0 && bookedLetterIds.size === slots.length
 
+  function flash(msg) {
+    setNotice(msg)
+    if (noticeTimer.current) clearTimeout(noticeTimer.current)
+    noticeTimer.current = setTimeout(() => setNotice(''), 3000)
+  }
+
   function bookLetter(slot) {
     if (locked || bookedLetterIds.has(slot.id)) return
+    setNotice('')
     setBooked((prev) => [...prev, { kind: 'letter', id: slot.id, char: slot.char, key: `L${slot.id}` }])
   }
 
   function addSpace() {
     if (locked) return
+    const last = booked[booked.length - 1]
+    if (!last) {
+      flash('Add a letter before adding a space.')
+      return
+    }
+    if (last.kind === 'space') {
+      flash('You cannot add multiple spaces in a row.')
+      return
+    }
+    setNotice('')
     setBooked((prev) => [...prev, { kind: 'space', key: `S${spaceUid.current++}` }])
   }
 
   function removeToken(key) {
     if (locked) return
-    setBooked((prev) => prev.filter((t) => t.key !== key))
+    setNotice('')
+    setBooked((prev) => collapseSpaces(prev.filter((t) => t.key !== key)))
   }
 
   async function handleSave() {
@@ -68,7 +99,7 @@ export default function LetterGame({ name, onReset }) {
         <span className="game__source-name">{name}</span>
       </p>
 
-      {/* Line 1 — available letters in fixed positions + an infinite space key */}
+      {/* Line 1 — available letters in fixed positions + one infinite space key */}
       <section className="line line--available" aria-label="Available letters">
         {slots.map((slot) => {
           const isBooked = bookedLetterIds.has(slot.id)
@@ -116,6 +147,8 @@ export default function LetterGame({ name, onReset }) {
           ))
         )}
       </section>
+
+      {notice && <p className="status status--warn">{notice}</p>}
 
       {/* Actions */}
       <div className="actions">
