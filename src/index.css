@@ -275,6 +275,27 @@ body {
   background: rgba(201, 162, 63, 0.26);
 }
 
+/* Dedicated, always-available space key (Line 1) */
+.slot--space-add {
+  width: auto;
+  min-width: var(--slot);
+  padding: 0 18px;
+  color: var(--gold);
+  border-style: dashed;
+  border-color: var(--gold-soft);
+  background: var(--gold-faint);
+}
+
+.slot--space-add:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.slot--booked-space {
+  color: var(--gold);
+  background: rgba(201, 162, 63, 0.1);
+}
+
 /* ---- Actions / status ---- */
 .actions {
   display: flex;

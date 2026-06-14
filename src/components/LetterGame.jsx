@@ -1,38 +1,52 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { saveAnagram, isSupabaseConfigured } from '../supabaseClient'
 
-// Render a single character, showing spaces as a visible placeholder symbol.
-function displayChar(ch) {
-  return ch === ' ' ? '␣' : ch
-}
+const SPACE = '␣'
 
 export default function LetterGame({ name, onReset }) {
-  // One fixed slot per character, in original order. Index never changes.
+  // One fixed slot per *letter* (spaces are handled by the dedicated space
+  // button, not by per-character slots). Positions never reorder.
   const slots = useMemo(
-    () => Array.from(name).map((char, index) => ({ char, index })),
+    () =>
+      Array.from(name)
+        .filter((char) => char !== ' ')
+        .map((char, id) => ({ char, id })),
     [name]
   )
 
-  // Indices of booked letters, in tap order (Line 2, packed left).
+  // Line 2 contents, in tap order. Each token is either a booked letter
+  // ({ kind: 'letter', id, char }) or an inserted space ({ kind: 'space' }).
   const [booked, setBooked] = useState([])
   const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
   const [errorMsg, setErrorMsg] = useState('')
+  const spaceUid = useRef(0)
 
-  const bookedSet = useMemo(() => new Set(booked), [booked])
-  const anagram = useMemo(
-    () => booked.map((i) => slots[i].char).join(''),
-    [booked, slots]
+  const locked = saveState === 'saving' || saveState === 'saved'
+
+  const bookedLetterIds = useMemo(
+    () => new Set(booked.filter((t) => t.kind === 'letter').map((t) => t.id)),
+    [booked]
   )
-  const allBooked = slots.length > 0 && booked.length === slots.length
+  const anagram = useMemo(
+    () => booked.map((t) => (t.kind === 'space' ? ' ' : t.char)).join(''),
+    [booked]
+  )
+  // Save depends only on the letters — leftover/unused spaces never block it.
+  const allLettersBooked = slots.length > 0 && bookedLetterIds.size === slots.length
 
-  function book(index) {
-    if (saveState === 'saving') return
-    setBooked((prev) => (prev.includes(index) ? prev : [...prev, index]))
+  function bookLetter(slot) {
+    if (locked || bookedLetterIds.has(slot.id)) return
+    setBooked((prev) => [...prev, { kind: 'letter', id: slot.id, char: slot.char, key: `L${slot.id}` }])
   }
 
-  function unbook(index) {
-    if (saveState === 'saving' || saveState === 'saved') return
-    setBooked((prev) => prev.filter((i) => i !== index))
+  function addSpace() {
+    if (locked) return
+    setBooked((prev) => [...prev, { kind: 'space', key: `S${spaceUid.current++}` }])
+  }
+
+  function removeToken(key) {
+    if (locked) return
+    setBooked((prev) => prev.filter((t) => t.key !== key))
   }
 
   async function handleSave() {
@@ -54,44 +68,50 @@ export default function LetterGame({ name, onReset }) {
         <span className="game__source-name">{name}</span>
       </p>
 
-      {/* Line 1 — available letters in fixed original positions */}
+      {/* Line 1 — available letters in fixed positions + an infinite space key */}
       <section className="line line--available" aria-label="Available letters">
         {slots.map((slot) => {
-          const isBooked = bookedSet.has(slot.index)
+          const isBooked = bookedLetterIds.has(slot.id)
           return (
             <button
-              key={slot.index}
+              key={slot.id}
               type="button"
               className={`slot ${isBooked ? 'slot--placeholder' : 'slot--available'}`}
-              onClick={() => !isBooked && book(slot.index)}
-              disabled={isBooked || saveState === 'saving' || saveState === 'saved'}
-              aria-label={
-                isBooked
-                  ? `${displayChar(slot.char)} (booked)`
-                  : `Book letter ${displayChar(slot.char)}`
-              }
+              onClick={() => bookLetter(slot)}
+              disabled={isBooked || locked}
+              aria-label={isBooked ? `${slot.char} (booked)` : `Book letter ${slot.char}`}
             >
-              {displayChar(slot.char)}
+              {slot.char}
             </button>
           )
         })}
+        <button
+          type="button"
+          className="slot slot--space-add"
+          onClick={addSpace}
+          disabled={locked}
+          aria-label="Add a space"
+          title="Add a space"
+        >
+          {SPACE}
+        </button>
       </section>
 
-      {/* Line 2 — booked letters, packed left in tap order */}
+      {/* Line 2 — booked letters and spaces, packed left in tap order */}
       <section className="line line--booked" aria-label="Your anagram">
         {booked.length === 0 ? (
           <span className="line__hint">Tap letters above to build your anagram</span>
         ) : (
-          booked.map((index) => (
+          booked.map((t) => (
             <button
-              key={index}
+              key={t.key}
               type="button"
-              className="slot slot--booked"
-              onClick={() => unbook(index)}
-              disabled={saveState === 'saving' || saveState === 'saved'}
-              aria-label={`Return letter ${displayChar(slots[index].char)}`}
+              className={`slot slot--booked ${t.kind === 'space' ? 'slot--booked-space' : ''}`}
+              onClick={() => removeToken(t.key)}
+              disabled={locked}
+              aria-label={t.kind === 'space' ? 'Remove space' : `Return letter ${t.char}`}
             >
-              {displayChar(slots[index].char)}
+              {t.kind === 'space' ? SPACE : t.char}
             </button>
           ))
         )}
@@ -108,7 +128,7 @@ export default function LetterGame({ name, onReset }) {
           </>
         ) : (
           <>
-            {allBooked && (
+            {allLettersBooked && (
               <button
                 type="button"
                 className="btn btn--primary"
@@ -125,7 +145,7 @@ export default function LetterGame({ name, onReset }) {
         )}
 
         {saveState === 'error' && <p className="status status--err">{errorMsg}</p>}
-        {allBooked && !isSupabaseConfigured && saveState !== 'saved' && (
+        {allLettersBooked && !isSupabaseConfigured && saveState !== 'saved' && (
           <p className="status status--note">
             Supabase isn’t configured — saving is disabled. See README.
           </p>
