@@ -1,20 +1,82 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import LogoSigil from './components/LogoSigil'
 import WatermarkSigil from './components/WatermarkSigil'
 import LetterGame from './components/LetterGame'
+import ThemeToggle from './components/ThemeToggle'
+import GoogleLoginModal from './components/GoogleLoginModal'
+import SavedList from './components/SavedList'
 
 const MIN_LEN = 3
 const MAX_LEN = 300
 
 // Manual dev version marker — bump this by hand before each push so you can
 // tell at a glance when a new build is live. Scheme: a=alpha, b=beta, v=release.
-const VERSION = 'a.3.0'
+const VERSION = 'a.4.0'
+
+const THEME_KEY = 'nagram-theme'
+const USER_KEY = 'nagram-user'
+
+function initialTheme() {
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved === 'light' || saved === 'dark') return saved
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+}
+
+function initialUser() {
+  try {
+    return JSON.parse(localStorage.getItem(USER_KEY)) || null
+  } catch {
+    return null
+  }
+}
 
 export default function App() {
   const [name, setName] = useState('')
   const [activeName, setActiveName] = useState(null) // non-null => game screen
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
+
+  const [theme, setTheme] = useState(initialTheme)
+  const [savedOpen, setSavedOpen] = useState(false)
+
+  // Placeholder Google auth (always succeeds). Stored locally for the session.
+  const [user, setUser] = useState(initialUser)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const loginResolver = useRef(null)
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem(THEME_KEY, theme)
+  }, [theme])
+
+  function ensureLogin() {
+    if (user) return Promise.resolve(user)
+    return new Promise((resolve) => {
+      loginResolver.current = resolve
+      setLoginOpen(true)
+    })
+  }
+
+  function completeLogin() {
+    // Simulated Google account — replace with real OAuth later.
+    const fake = { name: 'Nagram User', email: 'demo@nagram.app' }
+    setUser(fake)
+    localStorage.setItem(USER_KEY, JSON.stringify(fake))
+    setLoginOpen(false)
+    loginResolver.current?.(fake)
+    loginResolver.current = null
+  }
+
+  function cancelLogin() {
+    setLoginOpen(false)
+    loginResolver.current?.(null)
+    loginResolver.current = null
+  }
+
+  function signOut() {
+    setUser(null)
+    localStorage.removeItem(USER_KEY)
+  }
 
   function start() {
     const value = input.trimEnd().replace(/^\s+/, '') // keep inner spaces, trim ends
@@ -58,6 +120,23 @@ export default function App() {
         <WatermarkSigil size={640} />
       </div>
 
+      <div className="topbar">
+        <button type="button" className="icon-btn" onClick={() => setSavedOpen(true)}>
+          Saved
+        </button>
+        <div className="topbar__right">
+          {user && (
+            <span className="account" title={user.email}>
+              <span className="account__avatar">{user.name.charAt(0)}</span>
+              <button type="button" className="account__signout" onClick={signOut}>
+                Sign out
+              </button>
+            </span>
+          )}
+          <ThemeToggle theme={theme} onToggle={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))} />
+        </div>
+      </div>
+
       <main className="column">
         <header className="masthead">
           <LogoSigil size={150} />
@@ -90,13 +169,16 @@ export default function App() {
             </button>
           </form>
         ) : (
-          <LetterGame key={activeName} name={activeName} onReset={reset} />
+          <LetterGame key={activeName} name={activeName} onReset={reset} ensureLogin={ensureLogin} />
         )}
       </main>
 
       <footer className="footer">
         <span>ना · ग · र · म</span>
       </footer>
+
+      <GoogleLoginModal open={loginOpen} onContinue={completeLogin} onCancel={cancelLogin} />
+      <SavedList open={savedOpen} onClose={() => setSavedOpen(false)} />
     </div>
   )
 }

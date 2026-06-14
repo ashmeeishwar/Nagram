@@ -25,3 +25,23 @@ export async function saveAnagram(originalName, anagram) {
   if (error) throw error
   return data
 }
+
+// Fetch saved anagrams, newest first.
+export async function fetchAnagrams() {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { data, error } = await supabase
+    .from('anagrams')
+    .select('id, original_name, anagram, created_at')
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (error) throw error
+  return data
+}
+
+// Delete one saved anagram by id.
+export async function deleteAnagram(id) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+  const { error } = await supabase.from('anagrams').delete().eq('id', id)
+  if (error) throw error
+}

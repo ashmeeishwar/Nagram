@@ -75,14 +75,29 @@ saving is simply disabled until you add credentials.
      created_at    timestamptz not null default now()
    );
 
-   -- Allow anonymous inserts from the web app.
+   -- Allow the web app (anon key) to insert, read and delete.
    alter table public.anagrams enable row level security;
 
    create policy "anon can insert anagrams"
      on public.anagrams for insert
      to anon
      with check (true);
+
+   create policy "anon can read anagrams"
+     on public.anagrams for select
+     to anon
+     using (true);
+
+   create policy "anon can delete anagrams"
+     on public.anagrams for delete
+     to anon
+     using (true);
    ```
+
+   > The Saved panel reads and deletes rows, so the `select` and `delete`
+   > policies above are required. This is a single-user demo using anonymous
+   > access; tighten these policies (e.g. per-user with real auth) before
+   > sharing publicly.
 
 > The `anon` key is safe to ship in a client bundle **as long as Row Level
 > Security is enabled** and policies only permit what you intend (here, inserts).

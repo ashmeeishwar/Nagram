@@ -14,7 +14,7 @@ function collapseSpaces(tokens) {
   return out
 }
 
-export default function LetterGame({ name, onReset }) {
+export default function LetterGame({ name, onReset, ensureLogin }) {
   // One fixed slot per *letter* (spaces are handled by the single dedicated
   // space button, not by per-character slots). Positions never reorder.
   const slots = useMemo(
@@ -81,10 +81,25 @@ export default function LetterGame({ name, onReset }) {
   }
 
   async function handleSave() {
+    // Drop any trailing space before saving and let the user know.
+    let tokens = booked
+    if (tokens.length && tokens[tokens.length - 1].kind === 'space') {
+      while (tokens.length && tokens[tokens.length - 1].kind === 'space') {
+        tokens = tokens.slice(0, -1)
+      }
+      setBooked(tokens)
+      flash('Last space removed.')
+    }
+    const finalAnagram = tokens.map((t) => (t.kind === 'space' ? ' ' : t.char)).join('')
+
+    // Simulated Google sign-in gate (always succeeds in this placeholder).
+    const account = await ensureLogin()
+    if (!account) return // user cancelled the sign-in
+
     setSaveState('saving')
     setErrorMsg('')
     try {
-      await saveAnagram(name, anagram)
+      await saveAnagram(name, finalAnagram)
       setSaveState('saved')
     } catch (err) {
       setSaveState('error')
