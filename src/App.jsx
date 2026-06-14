@@ -6,6 +6,10 @@ import LetterGame from './components/LetterGame'
 const MIN_LEN = 3
 const MAX_LEN = 300
 
+// Manual dev version marker — bump this by hand before each push so you can
+// tell at a glance when a new build is live. Scheme: a=alpha, b=beta, v=release.
+const VERSION = 'a.3.0'
+
 export default function App() {
   const [name, setName] = useState('')
   const [activeName, setActiveName] = useState(null) // non-null => game screen
@@ -57,7 +61,10 @@ export default function App() {
       <main className="column">
         <header className="masthead">
           <LogoSigil size={150} />
-          <h1 className="wordmark">Nagram</h1>
+          <h1 className="wordmark">
+            Nagram
+            <sup className="version">{VERSION}</sup>
+          </h1>
           <p className="tagline">Unmake a name. Make an anagram.</p>
         </header>
 
