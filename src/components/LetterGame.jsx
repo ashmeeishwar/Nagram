@@ -14,7 +14,13 @@ function collapseSpaces(tokens) {
   return out
 }
 
-export default function LetterGame({ name, onReset, ensureLogin }) {
+export default function LetterGame({
+  name,
+  sourceText = name,
+  sourceLabel = 'Name',
+  onReset,
+  ensureLogin,
+}) {
   // One fixed slot per *letter* (spaces are handled by the single dedicated
   // space button, not by per-character slots). Positions never reorder.
   const slots = useMemo(
@@ -30,9 +36,7 @@ export default function LetterGame({ name, onReset, ensureLogin }) {
   const [booked, setBooked] = useState([])
   const [saveState, setSaveState] = useState('idle') // idle | saving | saved | error
   const [errorMsg, setErrorMsg] = useState('')
-  const [notice, setNotice] = useState('')
   const spaceUid = useRef(0)
-  const noticeTimer = useRef(null)
 
   const locked = saveState === 'saving' || saveState === 'saved'
 
@@ -40,56 +44,34 @@ export default function LetterGame({ name, onReset, ensureLogin }) {
     () => new Set(booked.filter((t) => t.kind === 'letter').map((t) => t.id)),
     [booked]
   )
-  const anagram = useMemo(
-    () => booked.map((t) => (t.kind === 'space' ? ' ' : t.char)).join(''),
-    [booked]
-  )
   // Save depends only on the letters — leftover/unused spaces never block it.
   const allLettersBooked = slots.length > 0 && bookedLetterIds.size === slots.length
-
-  function flash(msg) {
-    setNotice(msg)
-    if (noticeTimer.current) clearTimeout(noticeTimer.current)
-    noticeTimer.current = setTimeout(() => setNotice(''), 3000)
-  }
+  // A space can only follow a letter — disabled when empty or already trailing a space.
+  const lastIsSpace = booked.length > 0 && booked[booked.length - 1].kind === 'space'
+  const canAddSpace = !locked && booked.length > 0 && !lastIsSpace
 
   function bookLetter(slot) {
     if (locked || bookedLetterIds.has(slot.id)) return
-    setNotice('')
     setBooked((prev) => [...prev, { kind: 'letter', id: slot.id, char: slot.char, key: `L${slot.id}` }])
   }
 
   function addSpace() {
-    if (locked) return
-    const last = booked[booked.length - 1]
-    if (!last) {
-      flash('Add a letter before adding a space.')
-      return
-    }
-    if (last.kind === 'space') {
-      flash('You cannot add multiple spaces in a row.')
-      return
-    }
-    setNotice('')
+    if (!canAddSpace) return
     setBooked((prev) => [...prev, { kind: 'space', key: `S${spaceUid.current++}` }])
   }
 
   function removeToken(key) {
     if (locked) return
-    setNotice('')
     setBooked((prev) => collapseSpaces(prev.filter((t) => t.key !== key)))
   }
 
   async function handleSave() {
-    // Drop any trailing space before saving and let the user know.
+    // Quietly drop any trailing space before saving.
     let tokens = booked
-    if (tokens.length && tokens[tokens.length - 1].kind === 'space') {
-      while (tokens.length && tokens[tokens.length - 1].kind === 'space') {
-        tokens = tokens.slice(0, -1)
-      }
-      setBooked(tokens)
-      flash('Last space removed.')
+    while (tokens.length && tokens[tokens.length - 1].kind === 'space') {
+      tokens = tokens.slice(0, -1)
     }
+    if (tokens.length !== booked.length) setBooked(tokens)
     const finalAnagram = tokens.map((t) => (t.kind === 'space' ? ' ' : t.char)).join('')
 
     // Simulated Google sign-in gate (always succeeds in this placeholder).
@@ -99,7 +81,7 @@ export default function LetterGame({ name, onReset, ensureLogin }) {
     setSaveState('saving')
     setErrorMsg('')
     try {
-      await saveAnagram(name, finalAnagram)
+      await saveAnagram(sourceText, finalAnagram)
       setSaveState('saved')
     } catch (err) {
       setSaveState('error')
@@ -110,8 +92,8 @@ export default function LetterGame({ name, onReset, ensureLogin }) {
   return (
     <div className="game">
       <p className="game__source">
-        <span className="game__source-label">Name</span>
-        <span className="game__source-name">{name}</span>
+        <span className="game__source-label">{sourceLabel}</span>
+        <span className="game__source-name">{sourceText}</span>
       </p>
 
       {/* Line 1 — available letters in fixed positions + one infinite space key */}
@@ -135,7 +117,7 @@ export default function LetterGame({ name, onReset, ensureLogin }) {
           type="button"
           className="slot slot--space-add"
           onClick={addSpace}
-          disabled={locked}
+          disabled={!canAddSpace}
           aria-label="Add a space"
           title="Add a space"
         >
@@ -162,8 +144,6 @@ export default function LetterGame({ name, onReset, ensureLogin }) {
           ))
         )}
       </section>
-
-      {notice && <p className="status status--warn">{notice}</p>}
 
       {/* Actions */}
       <div className="actions">

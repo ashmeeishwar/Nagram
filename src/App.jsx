@@ -11,7 +11,7 @@ const MAX_LEN = 300
 
 // Manual dev version marker — bump this by hand before each push so you can
 // tell at a glance when a new build is live. Scheme: a=alpha, b=beta, v=release.
-const VERSION = 'a.4.0'
+const VERSION = 'a.5.0'
 
 const THEME_KEY = 'nagram-theme'
 const USER_KEY = 'nagram-user'
@@ -30,9 +30,24 @@ function initialUser() {
   }
 }
 
+// Reduce any text to a series of unique letters/digits — no duplicates (case
+// insensitive), no spaces or punctuation. The raw material for a sigil.
+function toUniqueLetters(text) {
+  const seen = new Set()
+  const out = []
+  for (const ch of Array.from(text)) {
+    if (!/[\p{L}\p{N}]/u.test(ch)) continue
+    const key = ch.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(ch)
+  }
+  return out.join('')
+}
+
 export default function App() {
-  const [name, setName] = useState('')
-  const [activeName, setActiveName] = useState(null) // non-null => game screen
+  const [mode, setMode] = useState('anagram') // anagram | unique
+  const [game, setGame] = useState(null) // { letters, text, label } | null
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
 
@@ -78,21 +93,35 @@ export default function App() {
     localStorage.removeItem(USER_KEY)
   }
 
+  function switchMode(next) {
+    if (next === mode) return
+    setMode(next)
+    setError('')
+  }
+
   function start() {
-    const value = input.trimEnd().replace(/^\s+/, '') // keep inner spaces, trim ends
+    const value = input.trim()
+    if (mode === 'unique') {
+      const letters = toUniqueLetters(value)
+      if (Array.from(letters).length < 2) {
+        setError('Enter a will statement with at least 2 distinct letters.')
+        return
+      }
+      setError('')
+      setGame({ letters, text: value, label: 'Will statement' })
+      return
+    }
     const len = Array.from(value).length
     if (len < MIN_LEN || len > MAX_LEN) {
       setError(`Please enter between ${MIN_LEN} and ${MAX_LEN} characters.`)
       return
     }
     setError('')
-    setName(value)
-    setActiveName(value)
+    setGame({ letters: value, text: value, label: 'Name' })
   }
 
   function reset() {
-    setActiveName(null)
-    setName('')
+    setGame(null)
     setInput('')
     setError('')
   }
@@ -114,10 +143,12 @@ export default function App() {
     start()
   }
 
+  const isUnique = mode === 'unique'
+
   return (
     <div className="app">
       <div className="watermark" aria-hidden="true">
-        <WatermarkSigil size={640} />
+        <WatermarkSigil />
       </div>
 
       <div className="topbar">
@@ -144,32 +175,62 @@ export default function App() {
             Nagram
             <sup className="version">{VERSION}</sup>
           </h1>
-          <p className="tagline">Unmake a name. Make an anagram.</p>
+          <p className="tagline">Unmake a name. Make a Nagram.</p>
         </header>
 
-        {activeName === null ? (
-          <form className="intro" onSubmit={onSubmit}>
-            <label className="intro__label" htmlFor="name-input">
-              Enter a name
-            </label>
-            <input
-              id="name-input"
-              className="intro__input"
-              type="text"
-              inputMode="text"
-              autoComplete="off"
-              autoFocus
-              placeholder="e.g. Ada Lovelace"
-              value={input}
-              onChange={onChange}
-            />
-            {error && <p className="status status--err">{error}</p>}
-            <button type="submit" className="btn btn--primary">
-              Start
-            </button>
-          </form>
+        {game === null ? (
+          <div className="intro-wrap">
+            <div className="modeswitch" role="tablist" aria-label="Mode">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isUnique}
+                className={`modeswitch__btn ${!isUnique ? 'is-active' : ''}`}
+                onClick={() => switchMode('anagram')}
+              >
+                Anagram
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isUnique}
+                className={`modeswitch__btn ${isUnique ? 'is-active' : ''}`}
+                onClick={() => switchMode('unique')}
+              >
+                Unique letters
+              </button>
+            </div>
+
+            <form className="intro" onSubmit={onSubmit}>
+              <label className="intro__label" htmlFor="name-input">
+                {isUnique ? 'Will statement' : 'Enter a name'}
+              </label>
+              <input
+                id="name-input"
+                className="intro__input"
+                type="text"
+                inputMode="text"
+                autoComplete="off"
+                autoFocus
+                placeholder={isUnique ? 'e.g. I am calm and focused' : 'e.g. Ada Lovelace'}
+                value={input}
+                onChange={onChange}
+              />
+              {error && <p className="status status--err">{error}</p>}
+              <button type="submit" className="btn btn--primary">
+                {isUnique ? 'Reduce to letters' : 'Start'}
+              </button>
+            </form>
+          </div>
         ) : (
-          <LetterGame key={activeName} name={activeName} onReset={reset} ensureLogin={ensureLogin} />
+          <LetterGame
+            key={game.letters}
+            name={game.letters}
+            sourceText={game.text}
+            sourceLabel={game.label}
+            onReset={reset}
+            ensureLogin={ensureLogin}
+          />
         )}
       </main>
 

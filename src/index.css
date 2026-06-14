@@ -82,6 +82,12 @@ body {
   z-index: 0;
 }
 
+/* Keep the watermark centred and never wider than the viewport / content. */
+.watermark svg {
+  width: min(560px, 92vw);
+  height: auto;
+}
+
 .column {
   position: relative;
   z-index: 1;
@@ -161,6 +167,48 @@ body {
 .intro__input:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px var(--gold-faint);
+}
+
+/* ---- Mode switch ---- */
+.intro-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.modeswitch {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+}
+
+.modeswitch__btn {
+  appearance: none;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  flex: 1;
+  padding: 11px 10px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.modeswitch__btn.is-active {
+  background: var(--gold);
+  color: #1a1306;
+}
+
+.modeswitch__btn:not(.is-active):hover {
+  color: var(--ink);
 }
 
 /* ---- Buttons ---- */
@@ -313,9 +361,15 @@ body {
   background: var(--gold-faint);
 }
 
-.slot--space-add:hover {
+.slot--space-add:hover:not(:disabled) {
   border-color: var(--gold);
   transform: translateY(-2px);
+}
+
+.slot--space-add:disabled {
+  opacity: 0.35;
+  cursor: default;
+  transform: none;
 }
 
 .slot--booked-space {
