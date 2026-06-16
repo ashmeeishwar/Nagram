@@ -18,6 +18,7 @@ export default function LetterGame({
   name,
   sourceText = name,
   sourceLabel = 'Name',
+  mode = 'anagram',
   onReset,
   ensureLogin,
 }) {
@@ -81,7 +82,7 @@ export default function LetterGame({
     setSaveState('saving')
     setErrorMsg('')
     try {
-      await saveAnagram(sourceText, finalAnagram)
+      await saveAnagram(sourceText, finalAnagram, mode)
       setSaveState('saved')
     } catch (err) {
       setSaveState('error')

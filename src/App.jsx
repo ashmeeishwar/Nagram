@@ -11,7 +11,7 @@ const MAX_LEN = 300
 
 // Manual dev version marker — bump this by hand before each push so you can
 // tell at a glance when a new build is live. Scheme: a=alpha, b=beta, v=release.
-const VERSION = 'a.5.0'
+const VERSION = 'a.6.0'
 
 const THEME_KEY = 'nagram-theme'
 const USER_KEY = 'nagram-user'
@@ -30,17 +30,18 @@ function initialUser() {
   }
 }
 
-// Reduce any text to a series of unique letters/digits — no duplicates (case
-// insensitive), no spaces or punctuation. The raw material for a sigil.
+// Reduce any text to a series of unique CAPITAL letters — letters only (no
+// digits, punctuation or spaces) and no duplicates (case insensitive). The raw
+// material for a sigil.
 function toUniqueLetters(text) {
   const seen = new Set()
   const out = []
   for (const ch of Array.from(text)) {
-    if (!/[\p{L}\p{N}]/u.test(ch)) continue
-    const key = ch.toLowerCase()
-    if (seen.has(key)) continue
-    seen.add(key)
-    out.push(ch)
+    if (!/\p{L}/u.test(ch)) continue
+    const upper = ch.toUpperCase()
+    if (seen.has(upper)) continue
+    seen.add(upper)
+    out.push(upper)
   }
   return out.join('')
 }
@@ -108,7 +109,7 @@ export default function App() {
         return
       }
       setError('')
-      setGame({ letters, text: value, label: 'Will statement' })
+      setGame({ letters, text: value, label: 'Will statement', mode: 'unique' })
       return
     }
     const len = Array.from(value).length
@@ -117,7 +118,7 @@ export default function App() {
       return
     }
     setError('')
-    setGame({ letters: value, text: value, label: 'Name' })
+    setGame({ letters: value, text: value, label: 'Name', mode: 'anagram' })
   }
 
   function reset() {
@@ -146,7 +147,7 @@ export default function App() {
   const isUnique = mode === 'unique'
 
   return (
-    <div className="app">
+    <div className="app" data-mode={mode}>
       <div className="watermark" aria-hidden="true">
         <WatermarkSigil />
       </div>
@@ -228,6 +229,7 @@ export default function App() {
             name={game.letters}
             sourceText={game.text}
             sourceLabel={game.label}
+            mode={game.mode}
             onReset={reset}
             ensureLogin={ensureLogin}
           />

@@ -8,6 +8,7 @@
   --ink: #f3ead7;
   --ink-dim: #b8ab8d;
   --line: rgba(201, 162, 63, 0.28);
+  --panel-unique: rgba(201, 162, 63, 0.1);
 
   --radius: 14px;
   --slot: 48px;
@@ -27,6 +28,7 @@
   --ink: #2a2418;
   --ink-dim: #7a6f57;
   --line: rgba(201, 162, 63, 0.45);
+  --panel-unique: rgba(201, 162, 63, 0.18);
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
@@ -209,6 +211,15 @@ body {
 
 .modeswitch__btn:not(.is-active):hover {
   color: var(--ink);
+}
+
+/* Unique-letters mode tints its working area brighter than Anagram mode. */
+.app[data-mode='unique'] .intro,
+.app[data-mode='unique'] .game {
+  background: var(--panel-unique);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
 }
 
 /* ---- Buttons ---- */
@@ -642,6 +653,25 @@ body {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+}
+
+.saved__mode {
+  align-self: flex-start;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--gold);
+  border: 1px solid var(--gold-soft);
+  margin-bottom: 2px;
+}
+
+.saved__mode--unique {
+  color: #1a1306;
+  background: var(--gold);
+  border-color: var(--gold);
 }
 
 .saved__anagram {

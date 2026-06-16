@@ -10,7 +10,7 @@ export const isSupabaseConfigured = Boolean(url && anonKey)
 export const supabase = isSupabaseConfigured ? createClient(url, anonKey) : null
 
 // Persist one anagram row. Resolves to the inserted row.
-export async function saveAnagram(originalName, anagram) {
+export async function saveAnagram(originalName, anagram, mode = 'anagram') {
   if (!supabase) {
     throw new Error(
       'Supabase is not configured. Copy .env.example to .env and set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.'
@@ -18,7 +18,7 @@ export async function saveAnagram(originalName, anagram) {
   }
   const { data, error } = await supabase
     .from('anagrams')
-    .insert({ original_name: originalName, anagram })
+    .insert({ original_name: originalName, anagram, mode })
     .select()
     .single()
 
@@ -31,7 +31,7 @@ export async function fetchAnagrams() {
   if (!supabase) throw new Error('Supabase is not configured.')
   const { data, error } = await supabase
     .from('anagrams')
-    .select('id, original_name, anagram, created_at')
+    .select('id, original_name, anagram, mode, created_at')
     .order('created_at', { ascending: false })
     .limit(200)
 

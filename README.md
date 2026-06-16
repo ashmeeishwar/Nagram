@@ -72,8 +72,12 @@ saving is simply disabled until you add credentials.
      id          bigint generated always as identity primary key,
      original_name text not null,
      anagram       text not null,
+     mode          text not null default 'anagram',
      created_at    timestamptz not null default now()
    );
+
+   -- If the table already exists from an earlier version, add the mode column:
+   alter table public.anagrams add column if not exists mode text not null default 'anagram';
 
    -- Allow the web app (anon key) to insert, read and delete.
    alter table public.anagrams enable row level security;
@@ -196,6 +200,21 @@ light and dark mode:
 The Devanagari glyphs are real outlines extracted from **Noto Sans Devanagari**
 (SIL OFL 1.1) and embedded as SVG `<path>` data, so they render identically on
 every device and need no network or system fonts.
+
+---
+
+## Documentation
+
+The [`docs/`](docs/) folder is a guide for **recreating this app quickly** with
+Claude Code or the web interface:
+
+- [`docs/RECREATE.md`](docs/RECREATE.md) — one master brief to paste and rebuild.
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — file map, state model, data flow.
+- [`docs/SETUP-CHECKLIST.md`](docs/SETUP-CHECKLIST.md) — Supabase/Vercel/PWA + the
+  deploy gotchas and version-bump workflow.
+- [`docs/ART-AND-GLYPHS.md`](docs/ART-AND-GLYPHS.md) — sigil geometry + the
+  Devanagari glyph-extraction recipe.
+- [`docs/PROMPT-LOG.md`](docs/PROMPT-LOG.md) — the iteration history.
 
 ---
 

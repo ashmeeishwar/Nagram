@@ -79,6 +79,9 @@ export default function SavedList({ open, onClose }) {
             {items.map((item) => (
               <li key={item.id} className="saved__item">
                 <div className="saved__text">
+                  <span className={`saved__mode saved__mode--${item.mode || 'anagram'}`}>
+                    {item.mode === 'unique' ? 'Unique letters' : 'Anagram'}
+                  </span>
                   <span className="saved__anagram">{item.anagram}</span>
                   <span className="saved__source">from “{item.original_name}”</span>
                 </div>
